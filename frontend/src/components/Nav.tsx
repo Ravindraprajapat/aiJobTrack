@@ -1,17 +1,19 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import AuthModal from "./AuthModal";
 import axios from "axios";
 import { serverUrl } from "../App";
 import { useDispatch, useSelector } from "react-redux";
 import { setUserData } from "../redux/userSlice";
-import { LogOut, User as UserIcon } from "lucide-react";
+import { LogOut, User as UserIcon, ArrowLeft } from "lucide-react";
 import type { RootState } from "../redux/store";
 
 const Nav = () => {
   const [open, setOpen] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
   const dispatch = useDispatch();
+  const isDashboard = location.pathname === "/dashboard";
 
   const { userData } = useSelector((state: RootState) => state.user);
 
@@ -29,12 +31,23 @@ const Nav = () => {
     <>
       <nav className="fixed top-0 left-0 w-full z-50 backdrop-blur-md bg-white/70 dark:bg-[#020617]/70 border-b border-slate-200 dark:border-white/10 transition-colors">
         <div className="max-w-7xl mx-auto flex justify-between items-center px-6 md:px-10 py-4">
-          {/* Logo */}
-          <Link to={userData ? "/dashboard" : "/"}>
-            <h1 className="text-2xl font-bold text-slate-800 dark:text-white transition-colors cursor-pointer">
-              Job<span className="text-amber-500 dark:text-amber-400">Tracker</span>
-            </h1>
-          </Link>
+          {/* Left side: Back button + Logo */}
+          <div className="flex items-center gap-3">
+            {isDashboard && (
+              <button
+                onClick={() => navigate("/")}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 transition-colors text-sm font-medium"
+              >
+                <ArrowLeft size={15} />
+                <span className="hidden sm:inline">Home</span>
+              </button>
+            )}
+            <Link to={userData ? "/dashboard" : "/"}>
+              <h1 className="text-2xl font-bold text-slate-800 dark:text-white transition-colors cursor-pointer">
+                Job<span className="text-amber-500 dark:text-amber-400">Tracker</span>
+              </h1>
+            </Link>
+          </div>
 
           {/* Buttons or User Profile */}
           <div className="flex items-center gap-4">

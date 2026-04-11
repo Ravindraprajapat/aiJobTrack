@@ -1,9 +1,9 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import axios from "axios";
 import { useDispatch } from "react-redux";
 import { addApplication } from "../redux/applicationSlice";
 import { serverUrl } from "../App";
-import { Loader2, Copy, Check } from "lucide-react";
+import { Loader2, Copy, Check, Sparkles, FileText, Brain } from "lucide-react";
 
 interface Props {
   open: boolean;
@@ -15,10 +15,11 @@ const AddApplicationModal = ({ open, setOpen }: Props) => {
 
   const [step, setStep] = useState<"PARSE" | "LOADING" | "SUGGESTIONS" | "FORM">("PARSE");
   const [jdText, setJdText] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [errorDetails, setErrorDetails] = useState("");
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
   const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [loadingMsg, setLoadingMsg] = useState("Reading job description...");
 
   const [formData, setFormData] = useState<any>({
     company: "", role: "", seniority: "", location: "",
@@ -26,7 +27,7 @@ const AddApplicationModal = ({ open, setOpen }: Props) => {
     skills: [], niceToHaveSkills: [], suggestions: [], jdText: ""
   });
 
- 
+  if (!open) return null;
 
   const copyToClipboard = (text: string, index: number) => {
     navigator.clipboard.writeText(text);
@@ -40,36 +41,52 @@ const AddApplicationModal = ({ open, setOpen }: Props) => {
     setStep("LOADING");
     setErrorDetails("");
 
+    // Animate loading messages
+    const msgs = [
+      "Reading job description...",
+      "Extracting company & role...",
+      "Identifying required skills...",
+      "Generating resume bullet points...",
+      "Almost done...",
+    ];
+    let i = 0;
+    setLoadingMsg(msgs[0]);
+    const interval = setInterval(() => {
+      i = (i + 1) % msgs.length;
+      setLoadingMsg(msgs[i]);
+    }, 1200);
+
     try {
-      const res = await axios.post(
+      const { data } = await axios.post(
         `${serverUrl}/api/application/parse`,
         { jdText },
         { withCredentials: true }
       );
 
-      const AI = res.data;
-      console.log("AI RESPONSE:", AI);
+      clearInterval(interval);
+      console.log("AI RESPONSE:", data);
 
-      // const filled = {
-      //   company: AI.company && AI.company !== "Unknown" ? AI.company : "",
-      //   role: AI.role && AI.role !== "Unknown" ? AI.role : "",
-      //   seniority: AI.seniority || "",
-      //   location: AI.location || "",
-      //   salaryRange: AI.salaryRange || "",
-      //   jdLink: "",
-      //   notes: "",
-      //   status: "Applied",
-      //   skills: AI.skills || [],
-      //   niceToHaveSkills: AI.niceToHaveSkills || [],
-      //   suggestions: AI.suggestions || [],
-      //   jdText,
-      // };
+      const filled = {
+        company: data.company || "",
+        role: data.role || "",
+        seniority: data.seniority || "",
+        location: data.location || "",
+        salaryRange: data.salaryRange || "",
+        jdLink: "",
+        notes: "",
+        status: "Applied",
+        skills: data.skills || [],
+        niceToHaveSkills: data.niceToHaveSkills || [],
+        suggestions: data.suggestions || [],
+        jdText,
+      };
 
-      // setFormData(filled);
-      setSuggestions(AI.suggestions || []);
+      setFormData(filled);
+      setSuggestions(data.suggestions || []);
       setStep("SUGGESTIONS");
 
     } catch (err: any) {
+      clearInterval(interval);
       console.log("Parse error:", err);
       setErrorDetails("AI parsing failed. Please fill the form manually.");
       setStep("FORM");
@@ -79,7 +96,7 @@ const AddApplicationModal = ({ open, setOpen }: Props) => {
   const handleSave = async () => {
     if (!formData.company || !formData.role) return alert("Company and Role are required.");
     try {
-      setLoading(true);
+      setSaving(true);
       const res = await axios.post(
         `${serverUrl}/api/application/createApplication`,
         formData,
@@ -91,7 +108,7 @@ const AddApplicationModal = ({ open, setOpen }: Props) => {
       console.log("Save error", err);
       setErrorDetails("Failed to save application.");
     } finally {
-      setLoading(false);
+      setSaving(false);
     }
   };
 
@@ -108,49 +125,8 @@ const AddApplicationModal = ({ open, setOpen }: Props) => {
     setOpen(false);
   };
 
- 
-useEffect(() => {
-  if (step !== "FORM") return;
-
-  const autoFillForm = async () => {
-    try {
-      const { data } = await axios.post(
-        `${serverUrl}/api/application/parse`,
-        { jdText },
-        { withCredentials: true }
-      );
-        console.log("data")
-       console.log(data)
-
-      setFormData({
-        company: data.company || "",
-        role: data.role || "",
-        seniority: data.seniority || "",
-        location: data.location || "",
-        salaryRange: data.salaryRange || "",
-        jdLink: "",
-        notes: "",
-        status: "Applied",
-        skills: data.skills || [],
-        niceToHaveSkills: data.niceToHaveSkills || [],
-        suggestions: data.suggestions || [],
-        jdText,
-      });
-
-      setSuggestions(data.suggestions || []);
-
-    } catch (error) {
-      console.log("Auto-fill failed:", error);
-    }
-  };
-
-  autoFillForm();
-}, [step]);
-
- if (!open) return null;
-
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex justify-center items-center z-50 p-4 transition-all" onClick={handleClose}>
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex justify-center items-center z-50 p-4" onClick={handleClose}>
       <div
         className="bg-white dark:bg-[#0f172a] p-6 rounded-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto text-slate-800 dark:text-white shadow-2xl transition-colors"
         onClick={(e) => e.stopPropagation()}
@@ -165,7 +141,7 @@ useEffect(() => {
 
         {/* STEP 1: Paste JD */}
         {step === "PARSE" && (
-          <div className="space-y-4 animate-in fade-in">
+          <div className="space-y-4">
             <p className="text-slate-500 dark:text-gray-400 text-sm">Paste the Job Description below. AI will extract all details and generate resume bullet points automatically.</p>
             <textarea
               placeholder="Paste Job Description here..."
@@ -175,7 +151,7 @@ useEffect(() => {
             />
             <div className="flex gap-3">
               <button onClick={handleParse} className="flex-1 bg-amber-400 hover:bg-amber-500 text-black font-semibold px-4 py-3 rounded-lg flex justify-center items-center gap-2 transition-colors">
-                Extract details AI
+                <Sparkles size={16} /> Extract details with MNC AI
               </button>
               <button onClick={() => setStep("FORM")} className="px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-500 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
                 Skip AI
@@ -184,18 +160,55 @@ useEffect(() => {
           </div>
         )}
 
-        {/* STEP 2: Loading */}
+        {/* STEP 2: Animated Loader */}
         {step === "LOADING" && (
-          <div className="flex flex-col items-center justify-center py-16 gap-4 text-amber-500">
-            <Loader2 className="animate-spin" size={36} />
-            <p className="font-semibold text-sm uppercase tracking-wider">AI is analyzing the job description...</p>
-            <p className="text-xs text-slate-400 dark:text-slate-500">Extracting details & generating resume bullets</p>
+          <div className="flex flex-col items-center justify-center py-12 gap-6">
+            {/* Animated icon ring */}
+            <div className="relative flex items-center justify-center">
+              <div className="w-20 h-20 rounded-full border-4 border-amber-100 dark:border-amber-900/30" />
+              <div className="absolute w-20 h-20 rounded-full border-4 border-transparent border-t-amber-400 animate-spin" />
+              <div className="absolute">
+                <Brain size={28} className="text-amber-500 animate-pulse" />
+              </div>
+            </div>
+
+            {/* Animated steps */}
+            <div className="flex flex-col items-center gap-2">
+              <p className="font-semibold text-amber-500 dark:text-amber-400 text-sm uppercase tracking-wider transition-all">
+                {loadingMsg}
+              </p>
+              <p className="text-xs text-slate-400 dark:text-slate-500">Powered by Gemini AI</p>
+            </div>
+
+            {/* Progress dots */}
+            <div className="flex gap-2">
+              {[0, 1, 2].map((i) => (
+                <div
+                  key={i}
+                  className="w-2 h-2 rounded-full bg-amber-400"
+                  style={{ animation: `bounce 1.2s ease-in-out ${i * 0.2}s infinite` }}
+                />
+              ))}
+            </div>
+
+            {/* What's being extracted */}
+            <div className="flex gap-4 mt-2">
+              {[
+                { icon: <FileText size={14} />, label: "JD Details" },
+                { icon: <Sparkles size={14} />, label: "Skills" },
+                { icon: <Brain size={14} />, label: "Resume Bullets" },
+              ].map(({ icon, label }) => (
+                <div key={label} className="flex items-center gap-1.5 text-xs text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-slate-800 px-3 py-1.5 rounded-full">
+                  {icon} {label}
+                </div>
+              ))}
+            </div>
           </div>
         )}
 
-        {/* STEP 3: Show AI suggestions */}
+        {/* STEP 3: AI Suggestions */}
         {step === "SUGGESTIONS" && (
-          <div className="space-y-4 animate-in fade-in">
+          <div className="space-y-4">
             <div className="flex justify-between items-center">
               <h3 className="text-lg font-semibold text-amber-500 dark:text-amber-400">✨ Resume Bullet Point Suggestions</h3>
               <span className="text-xs text-slate-400 dark:text-slate-500">{suggestions.length} points generated</span>
@@ -229,9 +242,9 @@ useEffect(() => {
           </div>
         )}
 
-
+        {/* STEP 4: Auto-filled Form */}
         {step === "FORM" && (
-          <div className="space-y-4 animate-in fade-in">
+          <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="text-sm font-medium text-slate-600 dark:text-gray-400">Company *</label>
@@ -254,7 +267,7 @@ useEffect(() => {
                 <input value={formData.salaryRange} onChange={e => setFormData({...formData, salaryRange: e.target.value})} className="w-full p-2 bg-slate-50 dark:bg-slate-900 rounded border border-slate-200 dark:border-slate-700 mt-1" placeholder="e.g. $100k - $120k" />
               </div>
               <div>
-                <label className="text-sm font-medium text-slate-600 dark:text-gray-400">JD Link Option</label>
+                <label className="text-sm font-medium text-slate-600 dark:text-gray-400">JD Link</label>
                 <input value={formData.jdLink} onChange={e => setFormData({...formData, jdLink: e.target.value})} className="w-full p-2 bg-slate-50 dark:bg-slate-900 rounded border border-slate-200 dark:border-slate-700 mt-1" placeholder="https://..." />
               </div>
               <div className="col-span-2">
@@ -284,8 +297,8 @@ useEffect(() => {
             )}
 
             <div className="flex gap-3 mt-6 pt-4 border-t border-slate-200 dark:border-slate-800">
-              <button disabled={loading} onClick={handleSave} className="flex-1 bg-amber-400 text-black font-semibold hover:bg-amber-500 px-4 py-2 rounded transition-colors disabled:opacity-50">
-                {loading ? "Saving..." : "Save Application"}
+              <button disabled={saving} onClick={handleSave} className="flex-1 bg-amber-400 text-black font-semibold hover:bg-amber-500 px-4 py-2 rounded transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
+                {saving ? <><Loader2 size={16} className="animate-spin" /> Saving...</> : "Save Application"}
               </button>
               <button onClick={handleClose} className="bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-white hover:bg-slate-300 dark:hover:bg-slate-600 px-6 py-2 rounded transition-colors">Cancel</button>
             </div>
