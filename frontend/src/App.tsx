@@ -6,7 +6,7 @@ import useGetCurrentUser from './hooks/useGetCurrentUser'
 import UserDashBoard from './page/UserDashBoard'
 import useGetApplications from './hooks/useGetApplications'
 
-export const serverUrl ="http://localhost:3000"
+export const serverUrl ="https://aijobtrack-3.onrender.com"
 
 function App() {
 
