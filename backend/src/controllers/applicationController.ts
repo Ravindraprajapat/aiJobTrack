@@ -1,5 +1,5 @@
 import type { Request, Response } from "express";
-import { parseJobWithAI, streamJobParseWithAI, generateSuggestions } from "../service/aiService.js";
+import { parseJobWithAI, generateSuggestions } from "../service/aiService.js";
 import Application from "../models/applicationModel.js";
 
 // ✨ Generate resume bullet suggestions from JD
@@ -35,39 +35,6 @@ export const parseApplicationDetails = async (req: any, res: Response) => {
       message: "Parsing Error",
       error: error.message,
     });
-  }
-};
-
-// 🔥 STREAM FIXED
-export const parseApplicationStream = async (req: Request, res: Response) => {
-  res.setHeader("Content-Type", "text/event-stream");
-  res.setHeader("Cache-Control", "no-cache");
-  res.setHeader("Connection", "keep-alive");
-
-  try {
-    const { jdText } = req.body;
-    if (!jdText) {
-      res.write(`data: ${JSON.stringify({ error: "JD text required" })}\n\n`);
-      return res.end();
-    }
-
-    const stream = await streamJobParseWithAI(jdText);
-
-    for await (const chunk of stream) {
-      // ✅ FIX: correct Gemini chunk extraction
-      const text = chunk?.candidates?.[0]?.content?.parts?.[0]?.text;
-
-      if (text) {
-        res.write(`data: ${JSON.stringify({ chunk: text })}\n\n`);
-      }
-    }
-
-    res.write("data: [DONE]\n\n");
-    res.end();
-  } catch (error: any) {
-    console.log("STREAM ERROR:", error);
-    res.write(`data: ${JSON.stringify({ error: error.message })}\n\n`);
-    res.end();
   }
 };
 

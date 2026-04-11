@@ -67,10 +67,6 @@ export const parseJobWithAI = async (jdText: string) => {
   }
 };
 
-export const streamJobParseWithAI = async (jdText: string) => {
-  return await model.generateContentStream(buildPrompt(jdText));
-};
-
 export const generateSuggestions = async (jdText: string): Promise<string[]> => {
   try {
     const result = await model.generateContent(
