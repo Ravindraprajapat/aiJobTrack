@@ -13,7 +13,7 @@ const app = express();
 app.use(express.json());
 app.use(cookieParser()); 
 
-const PORT = process.env.PORT! || 8000 
+const PORT = process.env.PORT || 8000 
 
 app.use(
   cors({
