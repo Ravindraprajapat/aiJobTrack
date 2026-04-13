@@ -109,8 +109,8 @@ export const googleAuth = async (req: Request, res: Response) => {
     const token = genToken(user._id.toString());
 
     res.cookie("token", token, {
-      secure: false, 
-      sameSite: "strict",
+      secure:true, 
+      sameSite: "none",
       maxAge: 7 * 24 * 60 * 60 * 1000,
       httpOnly: true,
     });
